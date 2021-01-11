@@ -1,0 +1,5 @@
+logica da aplicação:
+usuario se loga
+ve a timeline de fotos postadas
+se quiser adiciona uma foto
+se quiser ve perfil de outros usuarios
