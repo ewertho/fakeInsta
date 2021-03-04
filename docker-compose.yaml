@@ -1,0 +1,39 @@
+version: "3.1"
+
+services:
+  db:
+    image: mysql
+    ports:
+      - 3306:3306
+    command: --default-authentication-plugin=mysql_native_password --sql_mode=NO_ENGINE_SUBSTITUTION.NO_AUTO_CREATE_USER --explicit_defaults_for_timestamp
+    restart: always
+    env_file:
+      - ./docker_db.env
+    networks:
+      - app-network
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
+    networks:
+      - app-network
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: dockerfile
+    links:
+      - db:db
+    depends_on:
+      - db
+    ports:
+      - 3333:3333
+    command: ["yarn", "sequelize-cli", "db:migrate", "&&", "yarn", "dev"]
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

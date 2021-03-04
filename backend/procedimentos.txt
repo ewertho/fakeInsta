@@ -1,0 +1,48 @@
+baixar sequelize mysql2
+baixar como dev dependenci sequelize-cli
+
+rodar:
+    yarn sequelize init
+    (vai criar os arquivos pro sequelize)
+
+criar o arquivo .sequelizerc se for mudar os arquivos e pastas do processo anterior
+    dentro do arquivo instanciar o path do node: path = require('path')
+    e exportar os caminhos dessa forma:
+    "pastaModificada-path": path.resolve("novo_caminho", "para_a_pasta", "separado_por_virgula_e_aspas"),
+    ex.:
+    "models-path": path.resolve("src", "models"),
+
+modificar arquivo config.json para aceitar variaveis de ambiente:
+    config.json => database.js
+    colocar: module.exports = {
+        exportar as configurações de BD: HOST,USER,PASSWORD,DIALECT,etc...
+    }
+    ex.:
+    module.exports = {
+        host: process.env.DB_HOST,
+        username: process.env.DB_USER,
+        password: process.env.DB_PASSWORD,
+        database: process.env.DB_NAME,
+        dialect: "mysql",
+        operatorsAliases: false,
+        logging: false,
+        define: {
+            timestamps: true,
+            underscored: true,
+            underscoredAll: true,
+        },
+    };
+
+
+iniciar uma migration
+    yarn sequelize migration:create --name=<nome_da_migration>  
+    o nome da migration não sera o mesmo nome da tabela
+
+na migration que sera criada, comecar a definir os atributos e seus tipos
+    não esquecer de criar um metodo para quando a migration tiver problema e tiver que se apagada
+
+rodar a migrate para que ela preeencha o banco de dados
+    yarn sequelize db:migrate
+
+criar agora o model na pasta models
+    

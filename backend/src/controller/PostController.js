@@ -1,4 +1,4 @@
-const Post = require("../model/Post");
+const Post = require("../models/Post");
 const sharp = require("sharp");
 const path = require("path");
 const fs = require("fs");
@@ -32,7 +32,11 @@ module.exports = {
   },
   async index(req, res) {
     const posts = await Post.find().sort("-createdAt");
-    return res.json(posts);
+    if (posts == undefined || posts == null || posts == false) {
+      return res.json({ message: "nada aqui" });
+    } else {
+      return res.json(posts);
+    }
   },
   show(req, res) {},
   destroy(req, res) {},

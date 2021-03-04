@@ -60,13 +60,13 @@ function New() {
     try {
       console.log("he");
       const data = new FormData();
-
+      console.log("2");
       data.append("image", { uri: localUri, name: filename, type });
       data.append("author", author);
       data.append("place", place);
       data.append("description", description);
       data.append("hashtags", hashtags);
-
+      console.log("3");
       const response = await api.post("/posts", data);
       console.log(response);
 
