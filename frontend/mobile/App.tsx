@@ -1,8 +1,7 @@
-import { NavigationContainer, DarkTheme } from "@react-navigation/native";
+import { DarkTheme, NavigationContainer } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
 
 import { RootNavigator } from "./src/navigation/root-navigator";
-import "./global.css";
 
 const theme = {
   ...DarkTheme,
