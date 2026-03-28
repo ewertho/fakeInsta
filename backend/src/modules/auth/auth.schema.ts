@@ -2,13 +2,18 @@ import { z } from "zod";
 
 export const signUpSchema = z
   .object({
-    name: z.string().min(2).max(60),
+    username: z
+      .string()
+      .min(2)
+      .max(30)
+      .regex(/^[a-zA-Z0-9._]+$/, "Use apenas letras, números, ponto e underline."),
+    fullName: z.string().min(2).max(60),
     email: z.string().email(),
     password: z.string().min(6).max(128),
     confirmPassword: z.string().min(6).max(128),
   })
   .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords do not match.",
+    message: "As senhas não coincidem.",
     path: ["confirmPassword"],
   });
 

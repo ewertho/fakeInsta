@@ -1,5 +1,8 @@
 import { io } from "socket.io-client";
 
-export const socket = io(process.env.EXPO_PUBLIC_SOCKET_URL ?? "http://10.0.2.2:3333", {
+import { socketUrl } from "./api";
+
+export const socket = io(socketUrl, {
   autoConnect: true,
+  timeout: 15_000,
 });

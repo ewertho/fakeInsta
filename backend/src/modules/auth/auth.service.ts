@@ -1,10 +1,12 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { prisma } from "../../lib/prisma.js";
+
 import { env } from "../../config/env.js";
+import { prisma } from "../../lib/prisma.js";
 
 type SignUpInput = {
-  name: string;
+  username: string;
+  fullName: string;
   email: string;
   password: string;
 };
@@ -14,29 +16,47 @@ type SignInInput = {
   password: string;
 };
 
+const userPublicSelect = {
+  id: true,
+  username: true,
+  fullName: true,
+  email: true,
+  avatarUrl: true,
+  isVerified: true,
+  createdAt: true,
+} as const;
+
 export async function signUp(input: SignUpInput) {
-  const existingUser = await prisma.user.findUnique({
-    where: { email: input.email.toLowerCase() },
+  const email = input.email.toLowerCase();
+  const username = input.username.toLowerCase();
+
+  const existingEmail = await prisma.user.findUnique({
+    where: { email },
   });
 
-  if (existingUser) {
+  if (existingEmail) {
     throw new Error("A user with this email already exists.");
+  }
+
+  const existingUsername = await prisma.user.findUnique({
+    where: { username },
+  });
+
+  if (existingUsername) {
+    throw new Error("Este nome de usuário já está em uso.");
   }
 
   const passwordHash = await bcrypt.hash(input.password, 10);
 
   const user = await prisma.user.create({
     data: {
-      name: input.name,
-      email: input.email.toLowerCase(),
+      username,
+      fullName: input.fullName,
+      email,
       passwordHash,
+      avatarUrl: `https://i.pravatar.cc/150?u=${encodeURIComponent(username)}`,
     },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      createdAt: true,
-    },
+    select: userPublicSelect,
   });
 
   return user;
@@ -57,20 +77,26 @@ export async function signIn(input: SignInInput) {
     throw new Error("Invalid email or password.");
   }
 
-  const token = jwt.sign(
-    { sub: user.id, email: user.email, name: user.name },
-    env.JWT_SECRET,
-    {
-      expiresIn: "7d",
-    },
-  );
+  const token = jwt.sign({ sub: user.id }, env.JWT_SECRET, {
+    expiresIn: "30d",
+  });
 
   return {
     token,
     user: {
       id: user.id,
-      name: user.name,
+      username: user.username,
+      fullName: user.fullName,
       email: user.email,
+      avatarUrl: user.avatarUrl,
+      isVerified: user.isVerified,
     },
   };
+}
+
+export async function getUserById(userId: string) {
+  return prisma.user.findUnique({
+    where: { id: userId },
+    select: userPublicSelect,
+  });
 }

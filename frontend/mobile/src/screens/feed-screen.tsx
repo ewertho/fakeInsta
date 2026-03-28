@@ -1,38 +1,51 @@
-import { useEffect, useState } from "react";
-import { FlatList, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  FlatList,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
-import { api } from "../lib/api";
-import { socket } from "../lib/socket";
-import type { Post } from "../types";
 import { PostCard } from "../components/post-card";
+import { api, assetUrl } from "../lib/api";
+import { socket } from "../lib/socket";
+import type { Post, StoryItem } from "../types";
 
 export function FeedScreen() {
   const [posts, setPosts] = useState<Post[]>([]);
+  const [stories, setStories] = useState<StoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
 
-  useEffect(() => {
-    async function loadPosts() {
-      try {
-        const response = await api.get<Post[]>("/posts");
-        setPosts(response.data);
-      } catch {
-        setHasError(true);
-      } finally {
-        setIsLoading(false);
-      }
+  const load = useCallback(async () => {
+    try {
+      const [postsRes, storiesRes] = await Promise.all([
+        api.get<Post[]>("/posts"),
+        api.get<StoryItem[]>("/stories"),
+      ]);
+      setPosts(postsRes.data);
+      setStories(storiesRes.data);
+    } catch {
+      setHasError(true);
+    } finally {
+      setIsLoading(false);
     }
-
-    loadPosts();
   }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   useEffect(() => {
     function handlePostCreated(post: Post) {
       setPosts((current) => [post, ...current]);
     }
 
-    function handlePostLiked(updatedPost: Post) {
-      setPosts((current) => current.map((post) => (post.id === updatedPost.id ? updatedPost : post)));
+    function handlePostLiked(updated: Post) {
+      setPosts((current) => current.map((p) => (p.id === updated.id ? updated : p)));
     }
 
     socket.on("post:created", handlePostCreated);
@@ -47,7 +60,7 @@ export function FeedScreen() {
   if (isLoading) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.helperText}>Carregando feed...</Text>
+        <ActivityIndicator color="#fff" />
       </View>
     );
   }
@@ -55,9 +68,7 @@ export function FeedScreen() {
   if (hasError) {
     return (
       <View style={styles.centered}>
-        <Text style={[styles.helperText, styles.helperTextCenter]}>
-          Nao consegui falar com a API. Ajuste EXPO_PUBLIC_API_URL se estiver em outro host.
-        </Text>
+        <Text style={styles.errorText}>Não foi possível carregar. Confira EXPO_PUBLIC_API_URL e a API.</Text>
       </View>
     );
   }
@@ -65,19 +76,43 @@ export function FeedScreen() {
   return (
     <FlatList
       style={styles.list}
-      contentContainerStyle={styles.content}
       data={posts}
       keyExtractor={(item) => item.id}
-      renderItem={({ item }) => <PostCard post={item} />}
       ListHeaderComponent={
-        <View style={styles.heroCard}>
-          <Text style={styles.heroEyebrow}>MOBILE REFRESH</Text>
-          <Text style={styles.heroTitle}>Expo com TypeScript e feed sincronizado.</Text>
-        </View>
+        stories.length ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.storiesWrap}>
+            {stories.map((story) => {
+              const avatar = story.user.avatarUrl?.startsWith("http")
+                ? story.user.avatarUrl
+                : story.user.avatarUrl
+                  ? `${assetUrl}${story.user.avatarUrl}`
+                  : `https://i.pravatar.cc/150?u=${story.user.username}`;
+
+              return (
+                <View key={story.id} style={styles.storyItem}>
+                  <View style={styles.storyRing}>
+                    <Image source={{ uri: avatar }} style={styles.storyAvatar} />
+                  </View>
+                  <Text numberOfLines={1} style={styles.storyLabel}>
+                    {story.user.username}
+                  </Text>
+                </View>
+              );
+            })}
+          </ScrollView>
+        ) : null
       }
+      renderItem={({ item }) => (
+        <PostCard
+          post={item}
+          onUpdated={(updated) =>
+            setPosts((current) => current.map((p) => (p.id === updated.id ? updated : p)))
+          }
+        />
+      )}
       ListEmptyComponent={
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>Nenhuma publicacao ainda.</Text>
+        <View style={styles.empty}>
+          <Text style={styles.emptyText}>Nenhuma publicação ainda.</Text>
         </View>
       }
     />
@@ -87,57 +122,55 @@ export function FeedScreen() {
 const styles = StyleSheet.create({
   list: {
     flex: 1,
-    backgroundColor: "#0c0a09",
-  },
-  content: {
-    paddingHorizontal: 16,
-    paddingVertical: 20,
+    backgroundColor: "#000000",
   },
   centered: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#0c0a09",
-    paddingHorizontal: 24,
+    backgroundColor: "#000000",
+    padding: 24,
   },
-  helperText: {
-    color: "#e7e5e4",
-    fontSize: 16,
-  },
-  helperTextCenter: {
+  errorText: {
+    color: "#ed4956",
     textAlign: "center",
   },
-  heroCard: {
-    marginBottom: 24,
-    borderRadius: 28,
-    borderWidth: 1,
-    borderColor: "rgba(253,186,116,0.2)",
-    backgroundColor: "rgba(251,146,60,0.1)",
-    paddingHorizontal: 20,
-    paddingVertical: 20,
+  storiesWrap: {
+    maxHeight: 110,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#262626",
   },
-  heroEyebrow: {
-    color: "#fed7aa",
+  storyItem: {
+    width: 76,
+    alignItems: "center",
+    marginRight: 8,
+  },
+  storyRing: {
+    borderRadius: 999,
+    padding: 2,
+    backgroundColor: "#bc1888",
+  },
+  storyAvatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 2,
+    borderColor: "#000",
+  },
+  storyLabel: {
+    marginTop: 4,
     fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 4,
+    color: "#fff",
+    maxWidth: 72,
+    textAlign: "center",
   },
-  heroTitle: {
-    marginTop: 8,
-    color: "#fafaf9",
-    fontSize: 28,
-    fontWeight: "600",
-  },
-  emptyState: {
-    borderRadius: 28,
-    borderWidth: 1,
-    borderStyle: "dashed",
-    borderColor: "rgba(255,255,255,0.15)",
-    paddingHorizontal: 20,
-    paddingVertical: 40,
+  empty: {
+    padding: 40,
   },
   emptyText: {
+    color: "#a8a8a8",
     textAlign: "center",
-    color: "#d6d3d1",
   },
 });

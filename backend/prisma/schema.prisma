@@ -8,21 +8,93 @@ datasource db {
 
 model User {
   id           String   @id @default(cuid())
-  name         String
+  username     String   @unique
   email        String   @unique
   passwordHash String
+  fullName     String
+  avatarUrl    String?
+  bio          String?
+  isVerified   Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  posts           Post[]
+  reels           Reel[]
+  postLikes       PostLike[]
+  reelLikes       ReelLike[]
+  following       Follow[]  @relation("Following")
+  followers       Follow[]  @relation("Followers")
+  stories         Story[]
+  sentMessages    Message[] @relation("SentMessages")
+  receivedMessages Message[] @relation("ReceivedMessages")
+}
+
+model Follow {
+  followerId  String
+  followingId String
+  follower    User   @relation("Following", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User   @relation("Followers", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followingId])
 }
 
 model Post {
-  id          String   @id @default(cuid())
-  author      String
-  place       String?
-  description String
-  hashtags    String?
-  imageUrl    String
-  likes       Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  imageUrl  String
+  caption   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  likes PostLike[]
+}
+
+model PostLike {
+  userId String
+  postId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@id([userId, postId])
+}
+
+model Story {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  imageUrl  String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Reel {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  videoUrl  String
+  caption   String
+  createdAt DateTime @default(now())
+
+  likes ReelLike[]
+}
+
+model ReelLike {
+  userId String
+  reelId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reel   Reel @relation(fields: [reelId], references: [id], onDelete: Cascade)
+
+  @@id([userId, reelId])
+}
+
+model Message {
+  id         String    @id @default(cuid())
+  senderId   String
+  receiverId String
+  sender     User      @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver   User      @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  body       String
+  readAt     DateTime?
+  createdAt  DateTime  @default(now())
 }

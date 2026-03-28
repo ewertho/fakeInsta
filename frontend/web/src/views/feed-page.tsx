@@ -3,14 +3,24 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "../lib/api";
 import { socket } from "../lib/socket";
-import type { Post } from "../types";
+import type { Post, StoryItem } from "../types";
 import { PostCard } from "../ui/post-card";
+import { StoriesBar } from "../ui/stories-bar";
 
 const postsQueryKey = ["posts"];
 
 export function FeedPage() {
   const queryClient = useQueryClient();
-  const { data, isLoading, isError } = useQuery({
+
+  const storiesQuery = useQuery({
+    queryKey: ["stories"],
+    queryFn: async () => {
+      const response = await api.get<StoryItem[]>("/stories");
+      return response.data;
+    },
+  });
+
+  const postsQuery = useQuery({
     queryKey: postsQueryKey,
     queryFn: async () => {
       const response = await api.get<Post[]>("/posts");
@@ -38,39 +48,42 @@ export function FeedPage() {
     };
   }, [queryClient]);
 
-  if (isLoading) {
+  if (postsQuery.isLoading) {
     return (
-      <section className="grid gap-6">
-        <div className="rounded-[2rem] border border-white/10 bg-white/5 p-8 text-stone-200">
-          Carregando publicações...
-        </div>
-      </section>
+      <div className="rounded-lg border border-[#262626] bg-black p-8 text-center text-[#a8a8a8]">
+        Carregando feed…
+      </div>
     );
   }
 
-  if (isError) {
+  if (postsQuery.isError) {
     return (
-      <section className="rounded-[2rem] border border-rose-400/20 bg-rose-400/10 p-8 text-rose-100">
-        Não consegui carregar o feed. Confere se a API está rodando.
-      </section>
+      <div className="rounded-lg border border-[#ed4956]/30 bg-[#ed4956]/10 p-8 text-center text-[#ed4956]">
+        Não foi possível carregar o feed. Verifique se a API está em execução.
+      </div>
     );
   }
 
   return (
-    <section className="grid gap-6">
-      <div className="rounded-[2rem] border border-orange-300/20 bg-gradient-to-r from-orange-300/15 to-amber-300/5 p-6">
-        <p className="text-sm uppercase tracking-[0.3em] text-orange-200/70">Feed em tempo real</p>
-        <h2 className="mt-2 text-3xl font-semibold tracking-tight text-stone-50">
-          Uma base nova, tipada e com atualizações ao vivo.
-        </h2>
-      </div>
+    <section>
+      {storiesQuery.data?.length ? <StoriesBar stories={storiesQuery.data} /> : null}
 
-      <div className="grid gap-6">
-        {data?.length ? (
-          data.map((post) => <PostCard key={post.id} post={post} />)
+      <div className="space-y-2">
+        {postsQuery.data?.length ? (
+          postsQuery.data.map((post) => (
+            <PostCard
+              key={post.id}
+              post={post}
+              onLiked={(updated) => {
+                queryClient.setQueryData<Post[]>(postsQueryKey, (current = []) =>
+                  current.map((p) => (p.id === updated.id ? updated : p)),
+                );
+              }}
+            />
+          ))
         ) : (
-          <div className="rounded-[2rem] border border-dashed border-white/15 bg-white/5 p-8 text-stone-300">
-            Ainda não há posts. Crie a primeira publicação para testar o fluxo completo.
+          <div className="rounded-lg border border-dashed border-[#262626] p-10 text-center text-[#a8a8a8]">
+            Nenhuma publicação ainda. Crie a primeira em <span className="text-white">Criar</span>.
           </div>
         )}
       </div>

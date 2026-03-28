@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import type { Multipart, MultipartValue } from "@fastify/multipart";
 
 import { postPayloadSchema } from "./posts.schema.js";
-import { createPost, likePost, listPosts } from "./posts.service.js";
+import { createPost, listPosts, toggleLikePost } from "./posts.service.js";
 
 function getFieldValue(field?: Multipart | Multipart[]): string | undefined {
   if (!field || Array.isArray(field)) {
@@ -17,26 +17,28 @@ function getFieldValue(field?: Multipart | Multipart[]): string | undefined {
 }
 
 export async function postsRoutes(app: FastifyInstance) {
-  app.get("/posts", async () => {
-    return listPosts();
+  app.get("/posts", async (request) => {
+    return listPosts(request.userId);
   });
 
   app.post("/posts", async (request, reply) => {
+    if (!request.userId) {
+      return reply.status(401).send({ message: "Faça login para publicar." });
+    }
+
     const file = await request.file();
 
     if (!file) {
-      return reply.status(400).send({ message: "Image upload is required." });
+      return reply.status(400).send({ message: "É necessário enviar uma imagem." });
     }
 
     const payload = postPayloadSchema.parse({
-      author: getFieldValue(file.fields.author),
-      place: getFieldValue(file.fields.place),
-      description: getFieldValue(file.fields.description),
-      hashtags: getFieldValue(file.fields.hashtags),
+      caption: getFieldValue(file.fields.caption) ?? "",
     });
 
     const post = await createPost({
-      ...payload,
+      userId: request.userId,
+      caption: payload.caption,
       image: file,
     });
 
@@ -46,8 +48,12 @@ export async function postsRoutes(app: FastifyInstance) {
   });
 
   app.post("/posts/:id/like", async (request, reply) => {
+    if (!request.userId) {
+      return reply.status(401).send({ message: "Faça login para curtir." });
+    }
+
     const params = request.params as { id: string };
-    const post = await likePost(params.id);
+    const post = await toggleLikePost(params.id, request.userId);
 
     app.io.emit("post:liked", post);
 

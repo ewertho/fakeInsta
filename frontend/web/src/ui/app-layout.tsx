@@ -1,56 +1,75 @@
-import { Camera, Sparkles } from "lucide-react";
-import { Link, NavLink, Outlet } from "react-router-dom";
+import { Outlet } from "react-router-dom";
+
+import { useAuth } from "../auth/auth-context";
+import { ASSET_URL } from "../lib/api";
+import { MessagesPopover } from "./messages-popover";
+import { Sidebar } from "./sidebar";
+import { SuggestionsPanel } from "./suggestions-panel";
 
 export function AppLayout() {
-  return (
-    <div className="min-h-screen bg-transparent text-stone-50">
-      <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-4 py-6 sm:px-6 lg:px-8">
-        <header className="sticky top-0 z-20 mb-8 rounded-[2rem] border border-white/10 bg-stone-950/80 px-5 py-4 shadow-2xl shadow-orange-950/20 backdrop-blur">
-          <div className="flex items-center justify-between gap-4">
-            <Link to="/" className="flex items-center gap-3">
-              <div className="rounded-2xl bg-gradient-to-br from-amber-300 via-orange-400 to-rose-500 p-3 text-stone-950">
-                <Sparkles className="size-5" />
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.35em] text-orange-200/60">
-                  Fake Social Lab
-                </p>
-                <h1 className="text-2xl font-semibold tracking-tight">FakeInsta</h1>
-              </div>
-            </Link>
+  const { user, isReady } = useAuth();
 
-            <nav className="flex items-center gap-2">
-              <NavLink
-                to="/"
-                className={({ isActive }) =>
-                  `rounded-full px-4 py-2 text-sm transition ${
-                    isActive ? "bg-white text-stone-950" : "text-stone-200 hover:bg-white/10"
-                  }`
-                }
-              >
-                Feed
-              </NavLink>
-              <NavLink
-                to="/new"
-                className={({ isActive }) =>
-                  `inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm transition ${
-                    isActive
-                      ? "bg-orange-400 text-stone-950"
-                      : "bg-white/5 text-stone-100 hover:bg-white/10"
-                  }`
-                }
-              >
-                <Camera className="size-4" />
-                Nova publicação
-              </NavLink>
-            </nav>
-          </div>
-        </header>
-
-        <main className="flex-1">
-          <Outlet />
-        </main>
+  if (!isReady) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-black text-[#a8a8a8]">
+        Carregando…
       </div>
+    );
+  }
+
+  const avatar = user?.avatarUrl?.startsWith("http")
+    ? user.avatarUrl
+    : user?.avatarUrl
+      ? `${ASSET_URL}${user.avatarUrl}`
+      : user
+        ? `https://i.pravatar.cc/150?u=${user.username}`
+        : null;
+
+  return (
+    <div className="min-h-screen bg-black text-white">
+      <Sidebar />
+
+      <div className="pl-[72px] md:pl-[244px]">
+        <div className="mx-auto flex max-w-[935px] justify-center gap-8 xl:max-w-[1015px]">
+          <main className="w-full max-w-[630px] shrink px-4 pb-24 pt-6 md:px-0">
+            <Outlet />
+          </main>
+
+          <aside className="hidden w-[320px] shrink-0 py-6 xl:block">
+            {user ? (
+              <div className="mb-6 flex items-center gap-3">
+                <img src={avatar ?? undefined} alt="" className="size-14 rounded-full object-cover" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold">{user.username}</p>
+                  <p className="truncate text-sm text-[#a8a8a8]">{user.fullName}</p>
+                </div>
+                <button type="button" className="text-xs font-semibold text-[#0095f6]">
+                  Mudar
+                </button>
+              </div>
+            ) : (
+              <p className="mb-6 text-sm text-[#a8a8a8]">
+                <a href="/login" className="font-semibold text-[#0095f6]">
+                  Entre
+                </a>{" "}
+                para ver sugestões e mensagens.
+              </p>
+            )}
+
+            {user ? <SuggestionsPanel /> : null}
+
+            <footer className="mt-8 text-xs leading-relaxed text-[#737373]">
+              <p>
+                Sobre · Ajuda · Imprensa · API · Empregos · Privacidade · Termos · Localizações · Idioma · Meta
+                Verified
+              </p>
+              <p className="mt-4 uppercase">© {new Date().getFullYear()} FakeInsta</p>
+            </footer>
+          </aside>
+        </div>
+      </div>
+
+      {user ? <MessagesPopover /> : null}
     </div>
   );
 }
